@@ -4,8 +4,9 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 let mongoose = require('mongoose');
-const passport = require('passport');
+const passport = require('./utils/authHandler');
 const session = require('express-session');
+const config = require('./utils/config');
 
 var app = express();
 
@@ -21,16 +22,21 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Session và Passport
 app.use(session({
-  secret: 'your-secret-key-change-this',
+  secret: config.sessionSecret,
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: config.nodeEnv === 'production'
+  }
 }));
 app.use(passport.initialize());
 app.use(passport.session());
 
 // Kết nối MongoDB
-mongoose.connect('mongodb://localhost:27017/nodejs-backend');
-mongoose.connection.on('conneted', () => {
+mongoose.connect(config.mongodbUri);
+mongoose.connection.on('connected', () => {
   console.log('Mongoose is connected');
 })
 

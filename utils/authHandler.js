@@ -1,27 +1,47 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const userModel = require('../schemas/users');
+const config = require('./config');
+
+async function buildUniqueUsername(baseUsername) {
+    let normalized = (baseUsername || 'googleuser').toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!normalized) {
+        normalized = 'googleuser';
+    }
+
+    let candidate = normalized;
+    let counter = 1;
+    while (await userModel.exists({ username: candidate })) {
+        candidate = normalized + counter;
+        counter += 1;
+    }
+    return candidate;
+}
 
 // Cấu hình Google Strategy
 passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID || '620629143754-fcghk6uf2mmr8h9offkf4g03i12kb5n9.apps.googleusercontent.com',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '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',
-    callbackURL: '/auth/google/callback'
+    clientID: config.googleClientId,
+    clientSecret: config.googleClientSecret,
+    callbackURL: config.googleCallbackUrl
 },
 async (accessToken, refreshToken, profile, done) => {
     try {
         let user = await userModel.findOne({ email: profile.emails[0].value });
         
         if (user) {
+            if (user.isDeleted || !user.status) {
+                return done(new Error('Account is disabled'), null);
+            }
             return done(null, user);
         } else {
+            const username = await buildUniqueUsername(profile.emails[0].value.split('@')[0]);
             const newUser = new userModel({
-                username: profile.emails[0].value.split('@')[0],
+                username: username,
                 email: profile.emails[0].value,
                 fullName: profile.displayName,
                 avatarUrl: profile.photos[0].value,
                 googleId: profile.id,
-                role: '69a67e9e9ee1e4062fe99151',
+                role: config.defaultRoleId,
                 status: true,
                 loginCount: 1
             });
