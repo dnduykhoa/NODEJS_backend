@@ -10,7 +10,6 @@ function sanitizeProduct(product) {
         description: product.description,
         price: product.price,
         images: product.images,
-        dimensions: product.dimensions,
         weightInGram: product.weightInGram,
         category: product.category,
         status: product.status,
@@ -22,7 +21,7 @@ function sanitizeProduct(product) {
 }
 
 module.exports = {
-    CreateProduct: async function (name, price, categoryId, sku, description, shortDescription, images, material, color, dimensions, weightInGram, discountPercent, status) {
+    CreateProduct: async function (name, price, categoryId, sku, description, images, weightInGram, status) {
         try {
             if (!categoryId) {
                 return { success: false, errorCode: "MISSING_CATEGORY_OR_BRAND" };
@@ -40,7 +39,6 @@ module.exports = {
                 sku: sku,
                 description: description,
                 images: images || [],
-                dimensions: dimensions,
                 weightInGram: weightInGram,
                 status: status !== undefined ? status : true
             });

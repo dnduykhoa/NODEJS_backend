@@ -81,13 +81,8 @@ router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (re
 			req.body.categoryId,
 			req.body.sku,
 			req.body.description,
-			req.body.shortDescription,
 			req.body.images,
-			req.body.material,
-			req.body.color,
-			req.body.dimensions,
 			req.body.weightInGram,
-			req.body.discountPercent,
 			req.body.status
 		);
 
