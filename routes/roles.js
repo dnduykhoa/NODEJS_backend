@@ -17,10 +17,10 @@ router.get('/:id', async function (req, res, next) {
             res.send(result);
         }
         else {
-            res.status(404).send({ message: "Id role not found" });
+            res.status(404).send({ message: "ID không tồn tại" });
         }
     } catch (error) {
-        res.status(404).send({ message: "Id role not found" });
+        res.status(404).send({ message: "ID không tồn tại" });
     }
 });
 
