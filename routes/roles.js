@@ -2,6 +2,9 @@ var express = require('express');
 var router = express.Router();
 
 let roleModel = require('../schemas/roles');
+const { checkLogin, checkRole } = require('../utils/jwtHandler');
+
+router.use(checkLogin, checkRole('ADMIN'));
 
 // Lấy tất cả role
 router.get('/', async function (req, res, next) {
