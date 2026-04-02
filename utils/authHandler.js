@@ -76,7 +76,7 @@ const checkLogin = async function (req, res, next) {
     } else {
         token = req.headers.authorization;
         if (!token || !token.startsWith("Bearer")) {
-            res.status(403).send("ban chua dang nhap")
+            res.status(403).send("Bạn chưa đăng nhập")
             return;
         }
         token = token.split(' ')[1];
@@ -86,7 +86,7 @@ const checkLogin = async function (req, res, next) {
         req.userId = result.id;
         next();
     } else {
-        res.status(403).send("ban chua dang nhap")
+        res.status(403).send("Bạn chưa đăng nhập")
     }
 }
 
@@ -98,7 +98,7 @@ const checkRole = function (...requiredRole) {
         if (requiredRole.includes(currentRole)) {
             next();
         } else {
-            res.status(403).send({ message: "ban khong co quyen" });
+            res.status(403).send({ message: "Bạn không có quyền" });
         }
     }
 }

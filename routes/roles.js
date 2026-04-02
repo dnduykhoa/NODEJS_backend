@@ -4,6 +4,7 @@ var router = express.Router();
 let roleModel = require('../schemas/roles');
 const { checkLogin, checkRole } = require('../utils/jwtHandler');
 
+// Tất cả route trong file này đều yêu cầu phải đăng nhập và có role là ADMIN
 router.use(checkLogin, checkRole('ADMIN'));
 
 // Lấy tất cả role
@@ -47,7 +48,7 @@ router.put('/:id', async function (req, res, next) {
         let id = req.params.id;
         let updatedRole = await roleModel.findByIdAndUpdate(id, req.body, { new: true });
         if (!updatedRole) {
-            return res.status(404).send({ message: "Id not found" });
+            return res.status(404).send({ message: "ID không tồn tại" });
         }
         res.send(updatedRole);
     } catch (error) {
@@ -65,7 +66,7 @@ router.delete('/:id', async function (req, res, next) {
             { new: true }
         );
         if (!updatedRole) {
-            return res.status(404).send({ message: "id not found" });
+            return res.status(404).send({ message: "ID không tồn tại" });
         }
         res.send(updatedRole);
     } catch (error) {

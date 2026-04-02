@@ -3,7 +3,7 @@ var router = express.Router();
 let userController = require('../controllers/users');
 let jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const passport = require('../utils/authHandler');
+const passport = require('passport');
 const userModel = require('../schemas/users');
 const validatorHandler = require('../utils/validatorHandler');
 const sendMailHandler = require('../utils/sendMailHandler');
@@ -20,7 +20,7 @@ function authCookieOptions() {
 
 // Đăng ký tài khoản 
 router.post(
-    '/register',
+    '/register', 
     validatorHandler.registerValidator,
     validatorHandler.validateResult,
     async function (req, res, next) {
@@ -36,21 +36,18 @@ router.post(
                 true,
                 0
             );
-
             return res.status(201).json({
                 success: true,
-                message: 'Dang ky thanh cong',
-                data: newUser
+                message: 'Đăng ký thành công'
             });
         } catch (error) {
             if (error && error.code === 11000) {
                 return res.status(409).json({
                     success: false,
-                    message: 'Username hoac email da ton tai',
+                    message: 'Username hoặc email đã tồn tại',
                     errorCode: 'DUPLICATE_USER'
                 });
             }
-
             return next(error);
         }
     }
@@ -72,14 +69,14 @@ router.post(
                 if (result.errorCode === 'ACCOUNT_DISABLED') {
                     return res.status(403).json({
                         success: false,
-                        message: 'Tai khoan da bi vo hieu hoa',
+                        message: 'Tài khoản đã bị vô hiệu hóa',
                         errorCode: result.errorCode
                     });
                 }
 
                 return res.status(401).json({
                     success: false,
-                    message: 'Ten dang nhap hoac mat khau khong dung',
+                    message: 'Tên đăng nhập hoặc mật khẩu không đúng',
                     errorCode: result.errorCode
                 });
             }
@@ -88,7 +85,7 @@ router.post(
 
             return res.json({
                 success: true,
-                message: 'Dang nhap thanh cong',
+                message: 'Đăng nhập thành công',
                 data: {
                     token: result.token,
                     user: result.user
@@ -104,7 +101,7 @@ router.post('/logout', function (req, res) {
     res.clearCookie('token', authCookieOptions());
     res.json({
         success: true,
-        message: 'Dang xuat thanh cong'
+        message: 'Đăng xuất thành công'
     });
 });
 
@@ -129,7 +126,7 @@ router.post(
 
             return res.json({
                 success: true,
-                message: 'Neu email ton tai, lien ket reset da duoc gui'
+                message: 'Nếu email tồn tại, liên kết reset đã được gửi'
             });
         } catch (error) {
             return next(error);
@@ -155,7 +152,7 @@ router.post(
             if (!user) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Token reset khong hop le hoac da het han',
+                    message: 'Token reset không hợp lệ hoặc đã hết hạn',
                     errorCode: 'INVALID_RESET_TOKEN'
                 });
             }
@@ -167,7 +164,7 @@ router.post(
 
             return res.json({
                 success: true,
-                message: 'Dat lai mat khau thanh cong'
+                message: 'Đặt lại mật khẩu thành công'
             });
         } catch (error) {
             return next(error);
@@ -195,7 +192,7 @@ router.get('/google/callback',
         
         res.json({
             success: true,
-            message: 'Dang nhap Google thanh cong',
+            message: 'Đăng nhập Google thành công',
             data: {
                 token: token,
                 user: {

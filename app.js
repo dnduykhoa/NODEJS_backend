@@ -4,7 +4,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 let mongoose = require('mongoose');
-const passport = require('./utils/authHandler');
+const passport = require('passport');
+require('./utils/authHandler');
 const session = require('express-session');
 const config = require('./utils/config');
 
