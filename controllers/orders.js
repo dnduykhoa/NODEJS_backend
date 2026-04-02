@@ -16,11 +16,6 @@ function sanitizeOrder(order) {
     };
 }
 
-function calculatePriceAfterDiscount(product) {
-    const discountPercent = Number(product.discountPercent || 0);
-    return Math.round((product.price * (100 - discountPercent)) / 100);
-}
-
 async function buildOrderItems(rawItems) {
     const productIds = rawItems.map(function(item) {
         return item.productId;
@@ -50,7 +45,7 @@ async function buildOrderItems(rawItems) {
             return { success: false, errorCode: 'INVALID_QUANTITY' };
         }
 
-        const price = calculatePriceAfterDiscount(product);
+        const price = product.price;
         items.push({
             product: product._id,
             productName: product.name,
