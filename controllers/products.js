@@ -1,6 +1,5 @@
 let productModel = require("../schemas/products");
 let categoryModel = require("../schemas/categories");
-let brandModel = require("../schemas/brands");
 
 function sanitizeProduct(product) {
     return {
