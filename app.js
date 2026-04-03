@@ -48,6 +48,7 @@ app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
 app.use('/roles', require('./routes/roles'));
 app.use('/carts', require('./routes/carts'));
+app.use('/reviews', require('./routes/reviews'));
 app.use('/reservations', require('./routes/reservations'));
 app.use('/orders', require('./routes/orders'));
 
