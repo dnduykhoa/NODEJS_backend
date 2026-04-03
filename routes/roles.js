@@ -38,6 +38,12 @@ router.post('/', async function (req, res, next) {
         await newRole.save();
         res.send(newRole);
     } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(400).send({
+                message: 'Tên role đã tồn tại',
+                errorCode: 'DUPLICATE_ROLE_NAME'
+            });
+        }
         res.status(400).send({ message: error.message });
     }
 });
@@ -52,6 +58,12 @@ router.put('/:id', async function (req, res, next) {
         }
         res.send(updatedRole);
     } catch (error) {
+        if (error && error.code === 11000) {
+            return res.status(400).send({
+                message: 'Tên role đã tồn tại',
+                errorCode: 'DUPLICATE_ROLE_NAME'
+            });
+        }
         res.status(400).send({ message: error.message });
     }
 });
