@@ -11,7 +11,12 @@ function sanitizeUser(user) {
         fullName: user.fullName,
         avatarUrl: user.avatarUrl,
         status: user.status,
-        role: user.role,
+        role: user.role && typeof user.role === 'object'
+            ? {
+                id: user.role._id || user.role.id || user.role,
+                name: user.role.name || ''
+            }
+            : user.role,
         loginCount: user.loginCount,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
@@ -38,7 +43,7 @@ module.exports = {
     },
 
     QueryByUserNameAndPassword: async function (username, password) {
-        let getUser = await userModel.findOne({ username: username });
+        let getUser = await userModel.findOne({ username: username }).populate('role');
         if (!getUser || !getUser.password) {
             return { success: false, errorCode: 'INVALID_CREDENTIALS' };
         }

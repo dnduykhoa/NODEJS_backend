@@ -8,6 +8,7 @@ const userModel = require('../schemas/users');
 const validatorHandler = require('../utils/validatorHandler');
 const sendMailHandler = require('../utils/sendMailHandler');
 const config = require('../utils/config');
+const { checkLogin } = require('../utils/jwtHandler');
 
 function authCookieOptions() {
     return {
@@ -102,6 +103,29 @@ router.post('/logout', function (req, res) {
     res.json({
         success: true,
         message: 'Đăng xuất thành công'
+    });
+});
+
+router.get('/me', checkLogin, function (req, res) {
+    return res.json({
+        success: true,
+        data: {
+            id: req.user._id,
+            username: req.user.username,
+            email: req.user.email,
+            fullName: req.user.fullName,
+            avatarUrl: req.user.avatarUrl,
+            status: req.user.status,
+            role: req.user.role
+                ? {
+                    id: req.user.role._id,
+                    name: req.user.role.name || ''
+                }
+                : null,
+            loginCount: req.user.loginCount,
+            createdAt: req.user.createdAt,
+            updatedAt: req.user.updatedAt
+        }
     });
 });
 
