@@ -4,7 +4,8 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 let mongoose = require('mongoose');
-const passport = require('./utils/authHandler');
+const passport = require('passport');
+require('./utils/authHandler');
 const session = require('express-session');
 const config = require('./utils/config');
 
@@ -43,11 +44,19 @@ mongoose.connection.on('connected', () => {
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
 app.use('/auth', require('./routes/auth'));
+
+// feature/messages
 app.use('/messages', require('./routes/messages'));
 app.use('/support-chat', require('./routes/messages'));
-// app.use('/products', require('./routes/product'));
-// app.use('/categories', require('./routes/categories'));
+
+// main
+app.use('/products', require('./routes/products'));
+app.use('/categories', require('./routes/categories'));
+
 app.use('/roles', require('./routes/roles'));
+app.use('/carts', require('./routes/carts'));
+app.use('/reservations', require('./routes/reservations'));
+app.use('/orders', require('./routes/orders'));
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
