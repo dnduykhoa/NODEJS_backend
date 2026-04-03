@@ -44,8 +44,15 @@ mongoose.connection.on('connected', () => {
 app.use('/', require('./routes/index'));
 app.use('/users', require('./routes/users'));
 app.use('/auth', require('./routes/auth'));
+
+// feature/messages
+app.use('/messages', require('./routes/messages'));
+app.use('/support-chat', require('./routes/messages'));
+
+// main
 app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
+
 app.use('/roles', require('./routes/roles'));
 app.use('/carts', require('./routes/carts'));
 app.use('/reservations', require('./routes/reservations'));
