@@ -40,6 +40,4 @@ const cartSchema = new mongoose.Schema(
     }
 );
 
-cartSchema.index({ user: 1 });
-
 module.exports = mongoose.model('cart', cartSchema);

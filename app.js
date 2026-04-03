@@ -52,6 +52,7 @@ app.use('/support-chat', require('./routes/messages'));
 // main
 app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
+app.use('/inventories', require('./routes/inventories'));
 
 app.use('/roles', require('./routes/roles'));
 app.use('/carts', require('./routes/carts'));
