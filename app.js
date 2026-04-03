@@ -52,6 +52,7 @@ app.use('/support-chat', require('./routes/messages'));
 // main
 app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
+app.use('/inventories', require('./routes/inventories'));
 
 // stash (code của bạn trước đó)
 app.use('/inventories', require('./routes/inventories'));

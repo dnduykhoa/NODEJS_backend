@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let reservationController = require('../controllers/reservations');
-const { checkLogin } = require('../utils/jwtHandle');
+const { checkLogin } = require('../utils/jwtHandler');
 
 router.use(checkLogin);
 
