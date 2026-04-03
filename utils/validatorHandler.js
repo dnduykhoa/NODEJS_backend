@@ -39,7 +39,15 @@ module.exports = {
             .isLength({ max: 100 }).withMessage('fullName cannot exceed 100 characters'),
         body('birthday')
             .optional()
-            .isISO8601().withMessage('birthday must be a valid date')
+            .isISO8601().withMessage('birthday must be a valid date'),
+        body('confirmPassword')
+            .notEmpty().withMessage('confirmPassword is required')
+            .custom((value, { req }) => {
+                if (value !== req.body.password) {
+                    throw new Error('confirmPassword does not match password');
+                }
+                return true;
+            })
     ],
     loginValidator: [
         body('username')

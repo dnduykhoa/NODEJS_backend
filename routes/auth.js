@@ -26,6 +26,15 @@ router.post(
     validatorHandler.validateResult,
     async function (req, res, next) {
         try {
+            // Kiểm tra password match (thêm validation lớp 2)
+            if (req.body.password !== req.body.confirmPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Mật khẩu nhập lại không khớp',
+                    errorCode: 'PASSWORD_MISMATCH'
+                });
+            }
+            
             let newUser = await userController.CreateAnUser(
                 req.body.username,
                 req.body.password,
