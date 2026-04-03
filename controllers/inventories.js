@@ -37,6 +37,171 @@ async function ensureProductExists(productId) {
 	return Boolean(exists);
 }
 
+function normalizeOrderItems(items) {
+	if (!Array.isArray(items) || items.length === 0) {
+		return { success: false, errorCode: 'INVALID_ITEMS' };
+	}
+
+	const normalizedItems = [];
+	for (let index = 0; index < items.length; index += 1) {
+		const item = items[index] || {};
+		const productId = item.product || item.productId;
+		const quantity = Number(item.quantity || 1);
+
+		if (!isValidObjectId(productId)) {
+			return { success: false, errorCode: 'INVALID_PRODUCT_ID' };
+		}
+
+		if (!Number.isFinite(quantity) || quantity <= 0) {
+			return { success: false, errorCode: 'INVALID_QUANTITY' };
+		}
+
+		normalizedItems.push({
+			productId: productId,
+			quantity: quantity
+		});
+	}
+
+	return { success: true, data: normalizedItems };
+}
+
+async function loadInventoryByProduct(productId) {
+	return inventoryModel.findOne({ product: productId, isDeleted: false });
+}
+
+async function rollbackInventoryChanges(changes, action) {
+	for (let index = changes.length - 1; index >= 0; index -= 1) {
+		const change = changes[index];
+		const inventory = change.inventory;
+		const quantity = change.quantity;
+
+		if (action === 'reserve') {
+			inventory.reservedStock -= quantity;
+		}
+
+		if (action === 'release') {
+			inventory.reservedStock += quantity;
+		}
+
+		if (action === 'commit') {
+			inventory.reservedStock += quantity;
+			inventory.stock += quantity;
+		}
+
+		if (action === 'restore') {
+			inventory.stock -= quantity;
+		}
+
+		if (action === 'revert-commit') {
+			inventory.reservedStock -= quantity;
+			inventory.stock -= quantity;
+		}
+
+		if (action === 'consume-restore') {
+			inventory.stock += quantity;
+		}
+
+		await inventory.save();
+	}
+}
+
+async function applyInventoryChanges(items, action) {
+	const normalized = normalizeOrderItems(items);
+	if (!normalized.success) {
+		return normalized;
+	}
+
+	const reservations = [];
+	for (let index = 0; index < normalized.data.length; index += 1) {
+		const item = normalized.data[index];
+		const inventory = await loadInventoryByProduct(item.productId);
+		if (!inventory) {
+			return { success: false, errorCode: 'INVENTORY_NOT_FOUND' };
+		}
+
+		const stock = Number(inventory.stock || 0);
+		const reservedStock = Number(inventory.reservedStock || 0);
+		const availableStock = stock - reservedStock;
+
+		if (action === 'reserve' && availableStock < item.quantity) {
+			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
+		}
+
+		if (action === 'commit' && (reservedStock < item.quantity || stock < item.quantity)) {
+			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
+		}
+
+		if (action === 'release' && reservedStock < item.quantity) {
+			return { success: false, errorCode: 'INSUFFICIENT_RESERVED_STOCK' };
+		}
+
+		if (action === 'consume-restore' && stock < item.quantity) {
+			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
+		}
+
+		reservations.push({ inventory: inventory, quantity: item.quantity });
+	}
+
+	try {
+		for (let index = 0; index < reservations.length; index += 1) {
+			const reservation = reservations[index];
+			const inventory = reservation.inventory;
+			const quantity = reservation.quantity;
+
+			if (action === 'reserve') {
+				inventory.reservedStock += quantity;
+			}
+
+			if (action === 'release') {
+				inventory.reservedStock -= quantity;
+			}
+
+			if (action === 'commit') {
+				inventory.reservedStock -= quantity;
+				inventory.stock -= quantity;
+			}
+
+			if (action === 'restore') {
+				inventory.stock += quantity;
+			}
+
+			if (action === 'revert-commit') {
+				inventory.reservedStock += quantity;
+				inventory.stock += quantity;
+			}
+
+			if (action === 'consume-restore') {
+				inventory.stock -= quantity;
+			}
+
+			await inventory.save();
+		}
+
+		return {
+			success: true,
+			data: reservations.map(function(reservation) {
+				return sanitizeInventory(reservation.inventory);
+			})
+		};
+	} catch (error) {
+		try {
+			await rollbackInventoryChanges(reservations, action);
+		} catch (rollbackError) {
+			return {
+				success: false,
+				errorCode: 'INVENTORY_ROLLBACK_ERROR',
+				message: rollbackError.message
+			};
+		}
+
+		return {
+			success: false,
+			errorCode: 'UPDATE_INVENTORY_ERROR',
+			message: error.message
+		};
+	}
+}
+
 module.exports = {
 	CreateInventory: async function (productId, stock = 0, minStockThreshold = 0) {
 		try {
@@ -279,5 +444,29 @@ module.exports = {
 		} catch (error) {
 			return { success: false, errorCode: 'DELETE_INVENTORY_ERROR', message: error.message };
 		}
+	},
+
+	ReserveStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'reserve');
+	},
+
+	ReleaseReservedStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'release');
+	},
+
+	CommitReservedStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'commit');
+	},
+
+	RestoreCommittedStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'restore');
+	},
+
+	RevertCommittedStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'revert-commit');
+	},
+
+	ConsumeRestoredStockForItems: async function(items) {
+		return applyInventoryChanges(items, 'consume-restore');
 	}
 };
