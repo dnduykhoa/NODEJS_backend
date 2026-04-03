@@ -21,6 +21,28 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.use(function(req, res, next) {
+  const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
+  ];
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  }
+
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+
+  return next();
+});
+
 // Session và Passport
 app.use(session({
   secret: config.sessionSecret,
@@ -52,7 +74,6 @@ app.use('/support-chat', require('./routes/messages'));
 // main
 app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
-app.use('/inventories', require('./routes/inventories'));
 
 // stash (code của bạn trước đó)
 app.use('/inventories', require('./routes/inventories'));

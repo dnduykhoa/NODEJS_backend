@@ -179,7 +179,7 @@ router.get('/google',
 
 // Google OAuth - Callback
 router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/login' }),
+    passport.authenticate('google', { failureRedirect: '/auth/login' }),
     (req, res) => {
         // Đăng nhập thành công, tạo JWT token
         const token = jwt.sign(

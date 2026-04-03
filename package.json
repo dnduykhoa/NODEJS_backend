@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node ./bin/www",
     "seed:roles": "node ./scripts/seedRoles.js",
-    "seed:catalog": "node ./scripts/seedCatalog.js"
+    "seed:catalog": "node ./scripts/seedCatalog.js",
+    "seed:users": "node ./scripts/seedUsers.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
