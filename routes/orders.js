@@ -44,6 +44,9 @@ router.post('/', async function (req, res, next) {
             if (result.errorCode === 'CART_EMPTY' || result.errorCode === 'PRODUCT_NOT_FOUND') {
                 return res.status(400).json(result);
             }
+            if (result.errorCode === 'CREATE_PAYMENT_ERROR' || result.errorCode === 'DUPLICATE_PAYMENT') {
+                return res.status(500).json(result);
+            }
             return res.status(400).json(result);
         }
 

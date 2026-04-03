@@ -1,6 +1,6 @@
 # Tiến độ backend hiện tại
 
-Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có trong workspace, đối chiếu với yêu cầu tối thiểu trong `EX.md`. Kết luận ngắn: backend đã có khung chạy được cho các luồng cơ bản, nhưng mới hoàn thành một phần của phạm vi tối thiểu. Các phần lõi đã có là `auth`, `products`, `categories`, `carts`, `reservations`, `orders`; các phần chưa có hoặc mới ở mức khung là `brands`, `inventories`, `payments`, `messages`, `reviews`.
+Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có trong workspace, đối chiếu với yêu cầu tối thiểu trong `EX.md`. Kết luận ngắn: backend đã có khung chạy được cho các luồng cơ bản và đã hoàn thành thêm phần `inventories`, `payments` để khớp luồng mua hàng. Các phần lõi hiện có là `auth`, `products`, `categories`, `carts`, `reservations`, `orders`, `inventories`, `payments`; các phần vẫn chưa có hoặc mới ở mức khung là `brands`, `messages`, `reviews`.
 
 ## 1. Đã làm được tới đâu rồi
 
@@ -33,7 +33,16 @@ Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có t
 - `orders` đã có tạo đơn từ items hoặc từ cart, xem danh sách, xem chi tiết, hủy đơn, cập nhật trạng thái cho admin.
 - Có logic tính giá sau giảm giá trong đơn hàng.
 
-### 1.5 Các phần hỗ trợ
+### 1.5 Kho và thanh toán
+
+- `inventories` đã có schema, controller và route.
+- Có các thao tác chính: xem kho, tạo kho, tăng, giảm, điều chỉnh, xóa mềm.
+- Có luồng giữ kho, trừ kho và hoàn kho để đồng bộ với order/payment.
+- `payments` đã có schema, controller và route.
+- Tạo order COD sẽ sinh payment tương ứng và đồng bộ trạng thái với order.
+- Khi hủy hoặc cập nhật order/payment, hệ thống có cơ chế trả lại trạng thái kho tương ứng.
+
+### 1.6 Các phần hỗ trợ
 
 - `sendMailHandler` đã có chức năng gửi mail reset mật khẩu.
 - `uploadHandle` đã có cấu hình upload ảnh, nhưng hiện chưa thấy được gắn vào route nào.
@@ -57,14 +66,14 @@ Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có t
 
 ### Huy
 
-- `schemas/inventories`: chưa có.
-- `schemas/payments`: chưa có.
+- `schemas/inventories`: đã có.
+- `schemas/payments`: đã có.
 - `schemas/messages`: chưa có.
-- `routes/inventories`: chưa có.
-- `routes/payments`: chưa có.
+- `routes/inventories`: đã có.
+- `routes/payments`: đã có.
 - `routes/messages`: chưa có.
-- `controllers/inventories`: chưa có.
-- `controllers/payments`: chưa có.
+- `controllers/inventories`: đã có.
+- `controllers/payments`: đã có.
 - `controllers/messages`: chưa có.
 - `utils/sendMailHandle`: đã có file gửi mail, nhưng tên file hiện là `sendMailHandler.js`.
 
@@ -96,19 +105,18 @@ Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có t
 
 ## 3. Các điểm còn thiếu hoặc chưa khớp yêu cầu
 
-1. Chưa có các module `brands`, `inventories`, `payments`, `messages`, `reviews` ở cả schema, controller và route.
-2. Chưa có liên kết tồn kho thực tế khi thêm giỏ, đặt trước, tạo đơn.
-3. Chưa có luồng thanh toán tối thiểu theo COD được mô hình hóa thành payment module riêng.
-4. Chưa có module review nên chưa đáp ứng phần đánh giá sản phẩm.
-5. `products` và `categories` đang có lệch giữa route và controller: route truyền nhiều field hơn controller đang dùng, nên một số dữ liệu bị bỏ qua.
-6. `uploadHandle` đã có nhưng chưa nối vào create/update product hoặc category.
-7. Response chưa đồng nhất hoàn toàn giữa các module, vẫn còn chỗ trả raw document hoặc `res.send` thay vì JSON thống nhất.
-8. Một số module đang thiếu controller riêng đúng nghĩa theo kiến trúc chia lớp, logic còn nằm trực tiếp trong route.
+1. Chưa có các module `brands`, `messages`, `reviews` ở cả schema, controller và route.
+2. `inventories` và `payments` đã có, nhưng vẫn cần rà soát thêm các case biên khi kết hợp với các luồng khác như hủy đơn, cập nhật trạng thái đơn, và import sản phẩm.
+3. Chưa có module review nên chưa đáp ứng phần đánh giá sản phẩm.
+4. `products` và `categories` đang có lệch giữa route và controller: route truyền nhiều field hơn controller đang dùng, nên một số dữ liệu bị bỏ qua.
+5. `uploadHandle` đã có nhưng chưa nối vào create/update product hoặc category.
+6. Response chưa đồng nhất hoàn toàn giữa các module, vẫn còn chỗ trả raw document hoặc `res.send` thay vì JSON thống nhất.
+7. Một số module đang thiếu controller riêng đúng nghĩa theo kiến trúc chia lớp, logic còn nằm trực tiếp trong route.
 
 ## 4. Kết luận ngắn
 
-- Nếu chỉ tính các luồng nền tảng thì backend đã xong khoảng 55% đến 60%.
-- Nếu tính đúng theo yêu cầu tối thiểu trong `EX.md` thì còn thiếu đáng kể ở nhóm `Huy` và `Khoa` phần reviews, đồng thời thiếu `brands` và tích hợp inventory/payment cho luồng mua hàng.
+- Nếu chỉ tính các luồng nền tảng thì backend đã xong khoảng 70% đến 75%.
+- Nếu tính đúng theo yêu cầu tối thiểu trong `EX.md` thì phần còn thiếu tập trung ở `brands`, `reviews`, `messages`, cùng với việc hoàn thiện nốt các chỗ chưa đồng nhất giữa controller và schema.
 
 ## 5. Nên làm gì tiếp theo
 
@@ -120,10 +128,8 @@ Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có t
 
 ### Bước 2: Làm xong module còn thiếu của Huy
 
-- Tạo `schemas/inventories`, `payments`, `messages`.
-- Tạo `controllers/inventories`, `payments`, `messages`.
-- Tạo `routes/inventories`, `payments`, `messages`.
-- Quy ước tối thiểu cho payment là COD trước, các trạng thái đơn giản như `PENDING`, `PAID`, `FAILED`, `REFUNDED` nếu cần.
+- Rà lại `inventories` và `payments` để chốt các case biên khi cancel order, đổi trạng thái payment, và hoàn kho.
+- Gắn thêm validate chặt hơn cho các API liên quan đến stock và payment.
 - Gắn `sendMailHandler` vào một luồng có ích, ví dụ xác nhận đơn hoặc thông báo reset mật khẩu như hiện tại.
 
 ### Bước 3: Bổ sung `brands`
@@ -141,7 +147,7 @@ Tài liệu này là bản kiểm tra nhanh dựa trên mã nguồn hiện có t
 
 ### Bước 5: Làm inventory thật sự
 
-- Tạo bảng tồn kho gắn với sản phẩm hoặc một design rõ ràng theo SKU.
+- Tồn kho cơ bản đã có, nhưng cần tiếp tục làm chắc các quy tắc reserve/commit/release để không lệch khi đơn hàng thay đổi nhiều lần.
 - Khi thêm giỏ hoặc đặt trước, cần kiểm tra số lượng tồn.
 - Khi tạo đơn, cần trừ tồn hoặc giữ tồn theo quy tắc nhóm thống nhất.
 - Khi hủy đơn hoặc hủy giữ hàng, cần hoàn tồn kho.

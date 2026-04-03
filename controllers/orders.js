@@ -1,6 +1,8 @@
 let orderModel = require('../schemas/orders');
 let cartModel = require('../schemas/carts');
 let productModel = require('../schemas/products');
+let paymentController = require('./payments');
+let inventoryController = require('./inventories');
 
 function sanitizeOrder(order) {
     return {
@@ -9,6 +11,8 @@ function sanitizeOrder(order) {
         items: order.items,
         totalPrice: order.totalPrice,
         status: order.status,
+        paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus,
         shippingAddress: order.shippingAddress,
         note: order.note,
         createdAt: order.createdAt,
@@ -87,14 +91,65 @@ module.exports = {
             return total + item.total;
         }, 0);
 
-        let order = new orderModel({
-            user: userId,
-            items: orderItems,
-            totalPrice: totalPrice,
-            shippingAddress: shippingAddress || '',
+        let reservedStockResult = await inventoryController.ReserveStockForItems(orderItems);
+        if (!reservedStockResult.success) {
+            return {
+                success: false,
+                errorCode: reservedStockResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                message: reservedStockResult.message || 'Unable to reserve inventory'
+            };
+        }
+
+        let order;
+        try {
+            order = new orderModel({
+                user: userId,
+                items: orderItems,
+                totalPrice: totalPrice,
+                paymentMethod: 'COD',
+                paymentStatus: 'PENDING',
+                shippingAddress: shippingAddress || '',
+                note: note || ''
+            });
+
+            await order.save();
+        } catch (error) {
+            await inventoryController.ReleaseReservedStockForItems(orderItems);
+            return {
+                success: false,
+                errorCode: 'CREATE_ORDER_ERROR',
+                message: error.message
+            };
+        }
+
+        let paymentResult = await paymentController.CreatePaymentForOrder(order, {
+            paymentMethod: 'COD',
+            paymentStatus: 'PENDING',
             note: note || ''
         });
 
+        if (!paymentResult.success) {
+            await inventoryController.ReleaseReservedStockForItems(orderItems);
+            try {
+                order.isDeleted = true;
+                await order.save();
+            } catch (rollbackError) {
+                return {
+                    success: false,
+                    errorCode: 'ROLLBACK_ERROR',
+                    message: rollbackError.message
+                };
+            }
+
+            return {
+                success: false,
+                errorCode: paymentResult.errorCode || 'CREATE_PAYMENT_ERROR',
+                message: paymentResult.message || 'Unable to create payment for order'
+            };
+        }
+
+        order.paymentMethod = paymentResult.data.paymentMethod;
+        order.paymentStatus = paymentResult.data.paymentStatus;
         await order.save();
 
         if (cartUsed) {
@@ -103,7 +158,10 @@ module.exports = {
 
         return {
             success: true,
-            data: sanitizeOrder(order)
+            data: {
+                order: sanitizeOrder(order),
+                payment: paymentResult.data
+            }
         };
     },
 
@@ -154,11 +212,29 @@ module.exports = {
             return { success: false, errorCode: 'ORDER_NOT_CANCELABLE' };
         }
 
+        const previousOrderStatus = order.status;
+        const previousPaymentStatus = order.paymentStatus;
+
         order.status = 'CANCELLED';
+        order.paymentStatus = order.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED';
         await order.save();
+
+        const syncResult = await paymentController.SyncPaymentStatusByOrder(order._id, order.status);
+        if (!syncResult.success) {
+            order.status = previousOrderStatus;
+            order.paymentStatus = previousPaymentStatus;
+            await order.save();
+
+            return {
+                success: false,
+                errorCode: syncResult.errorCode || 'SYNC_PAYMENT_ERROR',
+                message: syncResult.message || 'Unable to synchronize payment and inventory'
+            };
+        }
 
         return {
             success: true,
+            data: sanitizeOrder(order),
             message: 'Order cancelled'
         };
     },
@@ -169,8 +245,30 @@ module.exports = {
             return { success: false, errorCode: 'ORDER_NOT_FOUND' };
         }
 
+        const previousOrderStatus = order.status;
+        const previousPaymentStatus = order.paymentStatus;
+
         order.status = status;
+        if (status === 'PAID') {
+            order.paymentStatus = 'PAID';
+        }
+        if (status === 'CANCELLED') {
+            order.paymentStatus = order.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED';
+        }
         await order.save();
+
+        const syncResult = await paymentController.SyncPaymentStatusByOrder(order._id, order.status);
+        if (!syncResult.success) {
+            order.status = previousOrderStatus;
+            order.paymentStatus = previousPaymentStatus;
+            await order.save();
+
+            return {
+                success: false,
+                errorCode: syncResult.errorCode || 'SYNC_PAYMENT_ERROR',
+                message: syncResult.message || 'Unable to synchronize payment and inventory'
+            };
+        }
 
         return {
             success: true,
