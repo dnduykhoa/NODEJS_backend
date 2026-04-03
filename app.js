@@ -53,6 +53,10 @@ app.use('/support-chat', require('./routes/messages'));
 app.use('/products', require('./routes/products'));
 app.use('/categories', require('./routes/categories'));
 
+// stash (code của bạn trước đó)
+app.use('/inventories', require('./routes/inventories'));
+app.use('/payments', require('./routes/payments'));
+
 app.use('/roles', require('./routes/roles'));
 app.use('/carts', require('./routes/carts'));
 app.use('/reservations', require('./routes/reservations'));
