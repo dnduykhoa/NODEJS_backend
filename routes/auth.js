@@ -7,6 +7,7 @@ const passport = require('passport');
 const userModel = require('../schemas/users');
 const validatorHandler = require('../utils/validatorHandler');
 const sendMailHandler = require('../utils/sendMailHandler');
+const upload = require('../utils/uploadHandler');
 const config = require('../utils/config');
 const { checkLogin } = require('../utils/jwtHandler');
 
@@ -124,6 +125,7 @@ router.get('/me', checkLogin, function (req, res) {
             email: req.user.email,
             fullName: req.user.fullName,
             avatarUrl: req.user.avatarUrl,
+            birthday: req.user.birthday,
             status: req.user.status,
             role: req.user.role
                 ? {
@@ -160,6 +162,132 @@ router.post(
             return res.json({
                 success: true,
                 message: 'Nếu email tồn tại, liên kết reset đã được gửi'
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+router.patch(
+    '/me',
+    checkLogin,
+    validatorHandler.updateProfileValidator,
+    validatorHandler.validateResult,
+    async function (req, res, next) {
+        try {
+            const result = await userController.UpdateMyProfile(req.userId, {
+                fullName: req.body.fullName,
+                avatarUrl: req.body.avatarUrl,
+                birthday: req.body.birthday
+            });
+
+            if (!result.success) {
+                if (result.errorCode === 'USER_NOT_FOUND') {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Không tìm thấy user',
+                        errorCode: result.errorCode
+                    });
+                }
+
+                return res.status(400).json({
+                    success: false,
+                    message: 'Không thể cập nhật hồ sơ',
+                    errorCode: result.errorCode
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: 'Cập nhật hồ sơ thành công',
+                data: result.data
+            });
+        } catch (error) {
+            return next(error);
+        }
+    }
+);
+
+router.post('/me/avatar', checkLogin, upload.single('avatar'), async function (req, res, next) {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'Vui lòng chọn file ảnh',
+                errorCode: 'MISSING_AVATAR_FILE'
+            });
+        }
+
+        const avatarUrl = `/uploads/${req.file.filename}`;
+        const result = await userController.UpdateMyProfile(req.userId, { avatarUrl });
+
+        if (!result.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không thể cập nhật ảnh đại diện',
+                errorCode: result.errorCode
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Cập nhật ảnh đại diện thành công',
+            data: result.data
+        });
+    } catch (error) {
+        return next(error);
+    }
+});
+
+router.put(
+    '/me/password',
+    checkLogin,
+    validatorHandler.changePasswordValidator,
+    validatorHandler.validateResult,
+    async function (req, res, next) {
+        try {
+            const result = await userController.ChangeMyPassword(
+                req.userId,
+                req.body.currentPassword,
+                req.body.newPassword
+            );
+
+            if (!result.success) {
+                if (result.errorCode === 'USER_NOT_FOUND') {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Không tìm thấy user',
+                        errorCode: result.errorCode
+                    });
+                }
+
+                if (result.errorCode === 'CURRENT_PASSWORD_REQUIRED') {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Vui lòng nhập mật khẩu hiện tại',
+                        errorCode: result.errorCode
+                    });
+                }
+
+                if (result.errorCode === 'INVALID_CURRENT_PASSWORD') {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Mật khẩu hiện tại không đúng',
+                        errorCode: result.errorCode
+                    });
+                }
+
+                return res.status(400).json({
+                    success: false,
+                    message: 'Không thể đổi mật khẩu',
+                    errorCode: result.errorCode
+                });
+            }
+
+            return res.json({
+                success: true,
+                message: 'Đổi mật khẩu thành công'
             });
         } catch (error) {
             return next(error);

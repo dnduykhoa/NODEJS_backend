@@ -79,6 +79,45 @@ module.exports = {
                 )
             )
     ],
+    updateProfileValidator: [
+        body('fullName')
+            .optional({ nullable: true })
+            .isString().withMessage('fullName must be a string')
+            .isLength({ max: 100 }).withMessage('fullName cannot exceed 100 characters'),
+        body('avatarUrl')
+            .optional({ nullable: true })
+            .isString().withMessage('avatarUrl must be a string')
+            .isLength({ max: 500 }).withMessage('avatarUrl cannot exceed 500 characters'),
+        body('birthday')
+            .optional({ nullable: true })
+            .isISO8601().withMessage('birthday must be a valid date')
+    ],
+    changePasswordValidator: [
+        body('currentPassword')
+            .optional({ nullable: true, checkFalsy: true })
+            .isString().withMessage('currentPassword must be a string')
+            .isLength({ min: 1 }).withMessage('currentPassword is required'),
+        body('newPassword')
+            .notEmpty().withMessage('newPassword is required')
+            .isStrongPassword(options.password)
+            .withMessage(
+                util.format('newPassword must be at least %d chars and include %d number, %d uppercase, %d lowercase, and %d symbol',
+                    options.password.minLength,
+                    options.password.minNumbers,
+                    options.password.minUppercase,
+                    options.password.minLowercase,
+                    options.password.minSymbols
+                )
+            ),
+        body('confirmPassword')
+            .notEmpty().withMessage('confirmPassword is required')
+            .custom((value, { req }) => {
+                if (value !== req.body.newPassword) {
+                    throw new Error('confirmPassword does not match newPassword');
+                }
+                return true;
+            })
+    ],
     postUserValidator: [
         body("email").isEmail().withMessage("email khong dung dinh dang"),
         body("password").isStrongPassword(options.password).withMessage(

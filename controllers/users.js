@@ -10,6 +10,7 @@ function sanitizeUser(user) {
         email: user.email,
         fullName: user.fullName,
         avatarUrl: user.avatarUrl,
+        birthday: user.birthday,
         status: user.status,
         role: user.role && typeof user.role === 'object'
             ? {
@@ -68,6 +69,69 @@ module.exports = {
                 { expiresIn: config.jwtExpiresIn }
             ),
             user: sanitizeUser(getUser)
+        };
+    },
+
+    UpdateMyProfile: async function (userId, updates) {
+        const user = await userModel.findOne({ _id: userId, isDeleted: false }).populate('role');
+
+        if (!user) {
+            return { success: false, errorCode: 'USER_NOT_FOUND' };
+        }
+
+        if (updates.fullName !== undefined) {
+            user.fullName = String(updates.fullName).trim();
+        }
+
+        if (updates.avatarUrl !== undefined) {
+            const nextAvatarUrl = String(updates.avatarUrl).trim();
+            if (nextAvatarUrl && nextAvatarUrl !== 'null' && nextAvatarUrl !== 'undefined') {
+                user.avatarUrl = nextAvatarUrl;
+            }
+        }
+
+        if (updates.birthday !== undefined) {
+            if (updates.birthday === null || updates.birthday === '') {
+                user.birthday = undefined;
+            } else {
+                user.birthday = new Date(updates.birthday);
+            }
+        }
+
+        await user.save();
+
+        return {
+            success: true,
+            data: sanitizeUser(user)
+        };
+    },
+
+    ChangeMyPassword: async function (userId, currentPassword, newPassword) {
+        const user = await userModel.findOne({ _id: userId, isDeleted: false });
+
+        if (!user) {
+            return { success: false, errorCode: 'USER_NOT_FOUND' };
+        }
+
+        if (user.password) {
+            if (!currentPassword) {
+                return { success: false, errorCode: 'CURRENT_PASSWORD_REQUIRED' };
+            }
+
+            const isValidCurrentPassword = await bcrypt.compare(currentPassword, user.password);
+            if (!isValidCurrentPassword) {
+                return { success: false, errorCode: 'INVALID_CURRENT_PASSWORD' };
+            }
+        }
+
+        user.password = newPassword;
+        user.resetPasswordTokenHash = null;
+        user.resetPasswordExpiresAt = null;
+        await user.save();
+
+        return {
+            success: true,
+            message: 'Password updated successfully'
         };
     }
 }
