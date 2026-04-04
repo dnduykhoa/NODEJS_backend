@@ -153,7 +153,7 @@ router.post(
                 user.resetPasswordExpiresAt = new Date(Date.now() + config.resetPasswordTokenTtlMs);
                 await user.save();
 
-                const resetLink = config.appBaseUrl + '/auth/reset-password?token=' + rawToken;
+                const resetLink = config.appBaseUrl + '/reset-password?token=' + rawToken;
                 await sendMailHandler.sendResetPasswordEmail(user.email, resetLink);
             }
 
