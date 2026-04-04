@@ -4,9 +4,6 @@ var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
 let mongoose = require('mongoose');
-const passport = require('passport');
-require('./utils/authHandler');
-const session = require('express-session');
 const config = require('./utils/config');
 
 var app = express();
@@ -42,20 +39,6 @@ app.use(function(req, res, next) {
 
   return next();
 });
-
-// Session và Passport
-app.use(session({
-  secret: config.sessionSecret,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: config.nodeEnv === 'production'
-  }
-}));
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Kết nối MongoDB
 mongoose.connect(config.mongodbUri);

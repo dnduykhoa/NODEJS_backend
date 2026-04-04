@@ -1,9 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let userController = require('../controllers/users');
-let jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const passport = require('passport');
 const userModel = require('../schemas/users');
 const validatorHandler = require('../utils/validatorHandler');
 const sendMailHandler = require('../utils/sendMailHandler');
@@ -330,41 +328,6 @@ router.post(
         } catch (error) {
             return next(error);
         }
-    }
-);
-
-// Google OAuth - Bắt đầu đăng nhập
-router.get('/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-// Google OAuth - Callback
-router.get('/google/callback',
-    passport.authenticate('google', { failureRedirect: '/auth/login' }),
-    (req, res) => {
-        // Đăng nhập thành công, tạo JWT token
-        const token = jwt.sign(
-            { id: req.user._id },
-            config.jwtSecret,
-            { expiresIn: config.jwtExpiresIn }
-        );
-
-        res.cookie('token', token, authCookieOptions());
-        
-        res.json({
-            success: true,
-            message: 'Đăng nhập Google thành công',
-            data: {
-                token: token,
-                user: {
-                    id: req.user._id,
-                    username: req.user.username,
-                    email: req.user.email,
-                    fullName: req.user.fullName,
-                    avatarUrl: req.user.avatarUrl
-                }
-            }
-        });
     }
 );
 
