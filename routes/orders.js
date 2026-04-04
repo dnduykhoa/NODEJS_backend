@@ -17,6 +17,18 @@ router.get('/', async function (req, res, next) {
     }
 });
 
+router.get('/admin/all', checkRole('ADMIN', 'MODERATOR'), async function (req, res, next) {
+    try {
+        const page = Number(req.query.page || 1);
+        const limit = Number(req.query.limit || 50);
+
+        let result = await orderController.GetAllOrders(page, limit);
+        return res.json(result);
+    } catch (error) {
+        return next(error);
+    }
+});
+
 router.get('/:id', async function (req, res, next) {
     try {
         let result = await orderController.GetOrderById(req.params.id, req.userId);
@@ -44,7 +56,10 @@ router.post('/', async function (req, res, next) {
             if (result.errorCode === 'CART_EMPTY' || result.errorCode === 'PRODUCT_NOT_FOUND') {
                 return res.status(400).json(result);
             }
-            if (result.errorCode === 'CREATE_PAYMENT_ERROR' || result.errorCode === 'DUPLICATE_PAYMENT') {
+            if (result.errorCode === 'DUPLICATE_PAYMENT') {
+                return res.status(409).json(result);
+            }
+            if (result.errorCode === 'CREATE_PAYMENT_ERROR') {
                 return res.status(500).json(result);
             }
             return res.status(400).json(result);

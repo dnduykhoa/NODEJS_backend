@@ -190,6 +190,32 @@ module.exports = {
         };
     },
 
+    GetAllOrders: async function (page, limit) {
+        const pageNumber = Number(page || 1);
+        const limitNumber = Number(limit || 10);
+        const skip = (pageNumber - 1) * limitNumber;
+
+        let orders = await orderModel
+            .find({ isDeleted: false })
+            .populate('user', 'username email fullName')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limitNumber);
+
+        let total = await orderModel.countDocuments({ isDeleted: false });
+
+        return {
+            success: true,
+            data: orders.map(sanitizeOrder),
+            pagination: {
+                page: pageNumber,
+                limit: limitNumber,
+                total: total,
+                pages: Math.ceil(total / limitNumber)
+            }
+        };
+    },
+
     GetOrderById: async function (orderId, userId) {
         let order = await orderModel.findOne({ _id: orderId, user: userId, isDeleted: false });
         if (!order) {

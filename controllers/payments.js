@@ -27,7 +27,7 @@ function resolvePaymentStatusByOrderStatus(orderStatus, currentPaymentStatus) {
 	const normalizedStatus = String(orderStatus || '').toUpperCase();
 	const currentStatus = String(currentPaymentStatus || 'PENDING').toUpperCase();
 
-	if (normalizedStatus === 'PAID' || normalizedStatus === 'SHIPPED' || normalizedStatus === 'COMPLETED') {
+	if (normalizedStatus === 'PAID') {
 		return 'PAID';
 	}
 
@@ -136,8 +136,16 @@ module.exports = {
 				return { success: false, errorCode: 'ORDER_NOT_FOUND' };
 			}
 
-			const existingPayment = await paymentModel.findOne({ order: order._id, isDeleted: false });
+			const existingPayment = await paymentModel.findOne({ order: order._id });
 			if (existingPayment) {
+				if (existingPayment.isDeleted) {
+					existingPayment.isDeleted = false;
+					existingPayment.paymentMethod = options.paymentMethod || existingPayment.paymentMethod || 'COD';
+					existingPayment.paymentStatus = options.paymentStatus || existingPayment.paymentStatus || 'PENDING';
+					existingPayment.note = options.note || existingPayment.note || '';
+					await existingPayment.save();
+				}
+
 				return {
 					success: true,
 					data: sanitizePayment(existingPayment)

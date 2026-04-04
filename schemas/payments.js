@@ -52,7 +52,7 @@ const paymentSchema = new mongoose.Schema(
 
 paymentSchema.index({ order: 1, isDeleted: 1 });
 
-paymentSchema.pre('save', function(next) {
+paymentSchema.pre('save', function() {
 	if (this.paymentStatus === 'PAID' && !this.paidAt) {
 		this.paidAt = new Date();
 	}
@@ -60,8 +60,6 @@ paymentSchema.pre('save', function(next) {
 	if (this.paymentStatus !== 'PAID') {
 		this.paidAt = this.paidAt || null;
 	}
-
-	next();
 });
 
 module.exports = mongoose.model('payment', paymentSchema);

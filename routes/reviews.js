@@ -3,6 +3,7 @@ var router = express.Router();
 
 const reviewController = require('../controllers/reviews');
 const reviewModel = require('../schemas/reviews');
+const orderModel = require('../schemas/orders');
 const { checkLogin, checkRole } = require('../utils/jwtHandler');
 
 // Lấy tất cả reviews của 1 sản phẩm
@@ -40,6 +41,23 @@ router.get('/my-reviews', checkLogin, async function (req, res, next) {
 // Thêm review mới
 router.post('/', checkLogin, async function (req, res, next) {
     try {
+        const paidOrderExists = await orderModel.exists({
+            user: req.userId,
+            isDeleted: false,
+            paymentStatus: 'PAID',
+            items: {
+                $elemMatch: { product: req.body.productId }
+            }
+        });
+
+        if (!paidOrderExists) {
+            return res.status(400).json({
+                success: false,
+                message: 'Bạn chỉ có thể đánh giá sản phẩm thuộc đơn đã thanh toán',
+                errorCode: 'REVIEW_NOT_ELIGIBLE'
+            });
+        }
+
         // Kiểm tra review đã tồn tại chưa
         let existingReview = await reviewModel.findOne({
             product: req.body.productId,

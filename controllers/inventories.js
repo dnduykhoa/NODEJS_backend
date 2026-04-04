@@ -5,15 +5,17 @@ let productModel = require('../schemas/products');
 function sanitizeInventory(inventory) {
 	const stock = Number(inventory.stock || 0);
 	const reservedStock = Number(inventory.reservedStock || 0);
+	const availableStock = Math.max(stock - reservedStock, 0);
+	const minStockThreshold = Number(inventory.minStockThreshold || 0);
 
 	return {
 		id: inventory._id,
 		product: inventory.product,
 		stock: stock,
 		reservedStock: reservedStock,
-		availableStock: Math.max(stock - reservedStock, 0),
-		minStockThreshold: inventory.minStockThreshold,
-		isLowStock: stock <= Number(inventory.minStockThreshold || 0),
+		availableStock: availableStock,
+		minStockThreshold: minStockThreshold,
+		isLowStock: availableStock <= minStockThreshold,
 		createdAt: inventory.createdAt,
 		updatedAt: inventory.updatedAt
 	};
@@ -84,7 +86,8 @@ async function rollbackInventoryChanges(changes, action) {
 		}
 
 		if (action === 'commit') {
-			inventory.reservedStock += quantity;
+			const reservedToCommit = Number(change.reservedToCommit || 0);
+			inventory.reservedStock += reservedToCommit;
 			inventory.stock += quantity;
 		}
 
@@ -127,7 +130,7 @@ async function applyInventoryChanges(items, action) {
 			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
 		}
 
-		if (action === 'commit' && (reservedStock < item.quantity || stock < item.quantity)) {
+		if (action === 'commit' && stock < item.quantity) {
 			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
 		}
 
@@ -139,7 +142,11 @@ async function applyInventoryChanges(items, action) {
 			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
 		}
 
-		reservations.push({ inventory: inventory, quantity: item.quantity });
+		const reservedToCommit = action === 'commit'
+			? Math.min(reservedStock, item.quantity)
+			: item.quantity;
+
+		reservations.push({ inventory: inventory, quantity: item.quantity, reservedToCommit: reservedToCommit });
 	}
 
 	try {
@@ -157,7 +164,7 @@ async function applyInventoryChanges(items, action) {
 			}
 
 			if (action === 'commit') {
-				inventory.reservedStock -= quantity;
+				inventory.reservedStock -= Number(reservation.reservedToCommit || 0);
 				inventory.stock -= quantity;
 			}
 
@@ -221,9 +228,23 @@ module.exports = {
 				return { success: false, errorCode: 'PRODUCT_NOT_FOUND' };
 			}
 
-			let existingInventory = await inventoryModel.findOne({ product: productId, isDeleted: false });
-			if (existingInventory) {
+			let existingInventory = await inventoryModel.findOne({ product: productId });
+			if (existingInventory && !existingInventory.isDeleted) {
 				return { success: false, errorCode: 'DUPLICATE_INVENTORY' };
+			}
+
+			if (existingInventory && existingInventory.isDeleted) {
+				existingInventory.isDeleted = false;
+				existingInventory.stock = stockNumber;
+				existingInventory.reservedStock = 0;
+				existingInventory.minStockThreshold = minStockThresholdNumber;
+				await existingInventory.save();
+				await existingInventory.populate('product');
+
+				return {
+					success: true,
+					data: sanitizeInventory(existingInventory)
+				};
 			}
 
 			let inventory = new inventoryModel({
