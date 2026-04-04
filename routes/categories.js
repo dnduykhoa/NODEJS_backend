@@ -32,7 +32,6 @@ router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (re
 		let result = await categoryController.CreateACategory(
 			req.body.name,
 			req.body.description,
-			req.body.imageUrl,
 			req.body.status
 		);
 
@@ -58,7 +57,6 @@ router.put('/:id', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (
 			req.params.id,
 			req.body.name,
 			req.body.description,
-			req.body.imageUrl,
 			req.body.status
 		);
 

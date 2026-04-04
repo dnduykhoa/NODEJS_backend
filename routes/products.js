@@ -1,7 +1,37 @@
 var express = require('express');
 var router = express.Router();
 let productController = require('../controllers/products');
+const upload = require('../utils/uploadHandler');
 const { checkLogin, checkRole } = require('../utils/jwtHandler');
+
+function parseImagesValue(value) {
+	if (Array.isArray(value)) {
+		return value;
+	}
+
+	if (typeof value !== 'string' || !value.trim()) {
+		return [];
+	}
+
+	try {
+		const parsed = JSON.parse(value);
+		if (Array.isArray(parsed)) {
+			return parsed.filter(Boolean);
+		}
+	} catch (error) {
+		// Fall through to comma-separated fallback.
+	}
+
+	return value.split(',').map((item) => item.trim()).filter(Boolean);
+}
+
+function resolveUploadedImages(req) {
+	if (Array.isArray(req.files) && req.files.length > 0) {
+		return req.files.map((file) => `/uploads/${file.filename}`);
+	}
+
+	return parseImagesValue(req.body.images);
+}
 
 /* GET products listing. */
 router.get('/', async function (req, res, next) {
@@ -73,7 +103,7 @@ router.get('/:id', async function (req, res, next) {
 	}
 });
 
-router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (req, res, next) {
+router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), upload.array('images', 10), async function (req, res, next) {
 	try {
 		let result = await productController.CreateProduct(
 			req.body.name,
@@ -81,7 +111,7 @@ router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (re
 			req.body.categoryId,
 			req.body.sku,
 			req.body.description,
-			req.body.images,
+			resolveUploadedImages(req),
 			req.body.weightInGram,
 			req.body.status
 		);
@@ -102,9 +132,18 @@ router.post('/', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (re
 	}
 });
 
-router.put('/:id', checkLogin, checkRole('ADMIN', 'MODERATOR'), async function (req, res, next) {
+router.put('/:id', checkLogin, checkRole('ADMIN', 'MODERATOR'), upload.array('images', 10), async function (req, res, next) {
 	try {
-		let result = await productController.UpdateProduct(req.params.id, req.body || {});
+		const updates = req.body || {};
+		const uploadedImages = resolveUploadedImages(req);
+		if (uploadedImages.length > 0) {
+			updates.images = uploadedImages;
+		}
+		else if (updates.images !== undefined) {
+			updates.images = parseImagesValue(updates.images);
+		}
+
+		let result = await productController.UpdateProduct(req.params.id, updates);
 
 		if (!result.success) {
 			if (result.errorCode === 'PRODUCT_NOT_FOUND' || result.errorCode === 'CATEGORY_NOT_FOUND') {
