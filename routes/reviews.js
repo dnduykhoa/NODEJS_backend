@@ -1,10 +1,9 @@
 var express = require('express');
 var router = express.Router();
-
-const reviewController = require('../controllers/reviews');
-const reviewModel = require('../schemas/reviews');
-const orderModel = require('../schemas/orders');
-const { checkLogin, checkRole } = require('../utils/jwtHandler');
+let reviewController = require('../controllers/reviews');
+let reviewModel = require('../schemas/reviews');
+let orderModel = require('../schemas/orders');
+let { checkLogin, checkRole } = require('../utils/jwtHandler');
 
 // Lấy tất cả reviews của 1 sản phẩm
 router.get('/product/:productId', async function (req, res, next) {
@@ -131,7 +130,7 @@ router.put('/:id', checkLogin, async function (req, res, next) {
     }
 });
 
-// DELETE /reviews/:id - Xóa review của chính mình
+// Xóa review của chính mình
 router.delete('/:id', checkLogin, async function (req, res, next) {
     try {
         let review = await reviewModel.findById(req.params.id);
@@ -166,9 +165,7 @@ router.delete('/:id', checkLogin, async function (req, res, next) {
     }
 });
 
-// ===== ADMIN ROUTES (cần login + role admin) =====
-
-// GET /reviews/admin/all - Admin xem tất cả reviews
+// Admin xem tất cả reviews
 router.get('/admin/all', checkLogin, checkRole('ADMIN'), async function (req, res, next) {
     try {
         let reviews = await reviewModel
@@ -188,7 +185,7 @@ router.get('/admin/all', checkLogin, checkRole('ADMIN'), async function (req, re
     }
 });
 
-// DELETE /reviews/admin/:id - Admin xóa review không phù hợp
+// Admin xóa review 
 router.delete('/admin/:id', checkLogin, checkRole('ADMIN'), async function (req, res, next) {
     try {
         let deletedReview = await reviewController.DeleteReview(req.params.id);

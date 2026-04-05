@@ -13,6 +13,7 @@ const roleSchema = new mongoose.Schema(
             default: ""
         },
 
+        // Đánh dấu xóa mềm
         isDeleted: {
             type: Boolean,
             default: false
