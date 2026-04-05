@@ -11,9 +11,7 @@ const userSchema = new mongoose.Schema(
 
         password: {
             type: String,
-            required: function() {
-                return !this.googleId; // Không bắt buộc nếu đăng nhập Google
-            }
+            required: [true, "Password is required"]
         },
 
         email: {
@@ -44,6 +42,7 @@ const userSchema = new mongoose.Schema(
             default: "https://i.sstatic.net/l60Hf.png"
         },
 
+        // Kích hoạt tài khoản
         status: {
             type: Boolean,
             default: false
@@ -55,28 +54,26 @@ const userSchema = new mongoose.Schema(
             required: true
         },
 
+        // Số lần đăng nhập thành công, dùng để kiểm soát đăng nhập lần đầu
         loginCount: {
             type: Number,
             default: 0,
             min: [0, "Login count cannot be negative"]
         },
 
+        // Đánh dấu xóa mềm
         isDeleted: {
             type: Boolean,
             default: false
         },
 
-        googleId: {
-            type: String,
-            unique: true,
-            sparse: true
-        },
-
+        // Mã hóa token reset password
         resetPasswordTokenHash: {
             type: String,
             default: null
         },
 
+        // Thời điểm hết hạn của token reset password
         resetPasswordExpiresAt: {
             type: Date,
             default: null

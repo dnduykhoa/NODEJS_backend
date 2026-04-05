@@ -1,4 +1,4 @@
-const reviewModel = require('../schemas/reviews');
+let reviewModel = require('../schemas/reviews');
 
 module.exports = {
     // Lấy tất cả reviews của 1 sản phẩm
