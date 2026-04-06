@@ -92,4 +92,26 @@ router.delete('/:id', async function (req, res, next) {
     }
 });
 
+router.post('/:id/checkout', async function (req, res, next) {
+    try {
+        let result = await reservationController.CheckoutReservation(
+            req.params.id,
+            req.userId,
+            req.body.shippingAddress,
+            req.body.note
+        );
+
+        if (!result.success) {
+            if (result.errorCode === 'RESERVATION_NOT_FOUND') {
+                return res.status(404).json(result);
+            }
+            return res.status(400).json(result);
+        }
+
+        return res.status(201).json(result);
+    } catch (error) {
+        return next(error);
+    }
+});
+
 module.exports = router;

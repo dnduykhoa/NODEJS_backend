@@ -1,6 +1,7 @@
 let reservationModel = require('../schemas/reservations');
 let productModel = require('../schemas/products');
 let inventoryController = require('./inventories');
+let orderController = require('./orders');
 
 function sanitizeReservation(reservation) {
     return {
@@ -278,10 +279,31 @@ module.exports = {
             return { success: false, errorCode: 'RESERVATION_NOT_FOUND' };
         }
 
+        if (reservation.status === 'CANCELLED') {
+            return {
+                success: true,
+                message: 'Reservation already cancelled'
+            };
+        }
+
+        if (reservation.status === 'EXPIRED') {
+            return {
+                success: true,
+                message: 'Reservation already expired'
+            };
+        }
+
         reservation = await expireReservationIfNeeded(reservation);
+        if (reservation.status === 'EXPIRED') {
+            return {
+                success: true,
+                message: 'Reservation already expired'
+            };
+        }
+
         if (reservation.status === 'PENDING') {
             const releaseResult = await releaseReservationInventory(reservation);
-            if (!releaseResult.success) {
+            if (!releaseResult.success && releaseResult.errorCode !== 'INSUFFICIENT_RESERVED_STOCK') {
                 return {
                     success: false,
                     errorCode: releaseResult.errorCode || 'UPDATE_INVENTORY_ERROR',
@@ -296,6 +318,54 @@ module.exports = {
         return {
             success: true,
             message: 'Reservation cancelled'
+        };
+    },
+
+    CheckoutReservation: async function (reservationId, userId, shippingAddress, note) {
+        let reservation = await reservationModel
+            .findOne({ _id: reservationId, user: userId, isDeleted: false })
+            .populate('product');
+
+        if (!reservation) {
+            return { success: false, errorCode: 'RESERVATION_NOT_FOUND' };
+        }
+
+        reservation = await expireReservationIfNeeded(reservation);
+        if (reservation.status !== 'PENDING') {
+            return { success: false, errorCode: 'RESERVATION_NOT_EDITABLE' };
+        }
+
+        const releaseResult = await releaseReservationInventory(reservation);
+        if (!releaseResult.success && releaseResult.errorCode !== 'INSUFFICIENT_RESERVED_STOCK') {
+            return {
+                success: false,
+                errorCode: releaseResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                message: releaseResult.message || 'Unable to release reservation before checkout'
+            };
+        }
+
+        const checkoutNote = [reservation.note, note].filter(Boolean).join(' | ');
+        const orderResult = await orderController.CreateOrder(
+            userId,
+            [{ productId: reservation.product._id || reservation.product, quantity: reservation.quantity }],
+            shippingAddress,
+            checkoutNote
+        );
+
+        if (!orderResult.success) {
+            await reserveReservationInventory(reservation.product._id || reservation.product, reservation.quantity);
+            return orderResult;
+        }
+
+        reservation.status = 'CONFIRMED';
+        await reservation.save();
+
+        return {
+            success: true,
+            data: {
+                reservation: sanitizeReservation(reservation),
+                checkout: orderResult.data
+            }
         };
     }
 };

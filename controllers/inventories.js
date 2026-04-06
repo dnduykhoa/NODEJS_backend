@@ -134,8 +134,10 @@ async function applyInventoryChanges(items, action) {
 			return { success: false, errorCode: 'INSUFFICIENT_STOCK' };
 		}
 
-		if (action === 'release' && reservedStock < item.quantity) {
-			return { success: false, errorCode: 'INSUFFICIENT_RESERVED_STOCK' };
+		let quantityToApply = item.quantity;
+		if (action === 'release') {
+			// Keep release idempotent: when data drifts, release only what is currently reserved.
+			quantityToApply = Math.min(reservedStock, item.quantity);
 		}
 
 		if (action === 'consume-restore' && stock < item.quantity) {
@@ -144,9 +146,9 @@ async function applyInventoryChanges(items, action) {
 
 		const reservedToCommit = action === 'commit'
 			? Math.min(reservedStock, item.quantity)
-			: item.quantity;
+			: quantityToApply;
 
-		reservations.push({ inventory: inventory, quantity: item.quantity, reservedToCommit: reservedToCommit });
+		reservations.push({ inventory: inventory, quantity: quantityToApply, reservedToCommit: reservedToCommit });
 	}
 
 	try {
