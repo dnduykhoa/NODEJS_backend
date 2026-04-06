@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let categoryController = require('../controllers/categories');
-const { checkLogin, checkRole } = require('../utils/jwtHandler');
+const { checkLogin, checkRole } = require('../utils/authHandler');
 
 /* GET categories listing. */
 router.get('/', async function (req, res, next) {

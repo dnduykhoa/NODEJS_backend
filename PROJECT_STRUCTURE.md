@@ -53,7 +53,7 @@ Project là backend API dùng:
 ### utils
 
 - [utils/authHandler.js](utils/authHandler.js): cau hinh Passport cho Google OAuth.
-- [utils/jwtHandler.js](utils/jwtHandler.js): middleware check dang nhap va role bang JWT.
+- [utils/authHandler.js](utils/authHandler.js): middleware check dang nhap va role bang JWT.
 - [utils/validatorHandler.js](utils/validatorHandler.js): validator cho dữ liệu vào.
 - [utils/uploadHandler.js](utils/uploadHandler.js): cấu hình Multer cho ảnh và Excel.
 - [utils/sendMailHandler.js](utils/sendMailHandler.js): gửi email reset mật khẩu.
@@ -94,7 +94,7 @@ Project là backend API dùng:
 
 ### Kiểm tra đăng nhập
 
-- Middleware: `checkLogin` trong [utils/jwtHandler.js](utils/jwtHandler.js)
+- Middleware: `checkLogin` trong [utils/authHandler.js](utils/authHandler.js)
 - Đọc token từ cookie hoặc header `Authorization`
 - Verify JWT rồi gán `req.userId`
 

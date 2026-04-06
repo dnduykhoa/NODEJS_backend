@@ -7,7 +7,7 @@ let validatorHandler = require('../utils/validatorHandler');
 let sendMailHandler = require('../utils/sendMailHandler');
 let upload = require('../utils/uploadHandler');
 let config = require('../utils/config');
-let { checkLogin } = require('../utils/jwtHandler');
+let { checkLogin } = require('../utils/authHandler');
 
 // Tùy chọn cookie cho token
 // Trả về cấu hình cookie để lưu token an toàn

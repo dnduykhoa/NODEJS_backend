@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let roleModel = require('../schemas/roles');
-let { checkLogin, checkRole } = require('../utils/jwtHandler');
+let { checkLogin, checkRole } = require('../utils/authHandler');
 
 // Phải đăng nhập + có quyền ADMIN
 router.use(checkLogin, checkRole('ADMIN'));

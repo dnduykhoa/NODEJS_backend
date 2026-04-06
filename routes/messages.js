@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 
-const { checkLogin, checkRole } = require('../utils/jwtHandler');
+const { checkLogin, checkRole } = require('../utils/authHandler');
 const validatorHandler = require('../utils/validatorHandler');
 const supportChatValidator = require('../utils/supportChatValidator');
 const messageController = require('../controllers/messages');
