@@ -27,7 +27,7 @@ function resolvePaymentStatusByOrderStatus(orderStatus, currentPaymentStatus) {
 	const normalizedStatus = String(orderStatus || '').toUpperCase();
 	const currentStatus = String(currentPaymentStatus || 'PENDING').toUpperCase();
 
-	if (normalizedStatus === 'PAID') {
+	if (['PAID', 'COMPLETED'].includes(normalizedStatus)) {
 		return 'PAID';
 	}
 

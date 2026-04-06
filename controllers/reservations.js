@@ -1,5 +1,6 @@
 let reservationModel = require('../schemas/reservations');
 let productModel = require('../schemas/products');
+let inventoryController = require('./inventories');
 
 function sanitizeReservation(reservation) {
     return {
@@ -18,6 +19,49 @@ function sanitizeReservation(reservation) {
 function getDefaultReservedUntil() {
     const oneDayMs = 24 * 60 * 60 * 1000;
     return new Date(Date.now() + oneDayMs);
+}
+
+function toInventoryItems(productId, quantity) {
+    return [{
+        product: productId,
+        quantity: Number(quantity || 0)
+    }];
+}
+
+async function releaseReservationInventory(reservation) {
+    if (!reservation) {
+        return { success: true };
+    }
+
+    return inventoryController.ReleaseReservedStockForItems(
+        toInventoryItems(reservation.product, reservation.quantity)
+    );
+}
+
+async function reserveReservationInventory(productId, quantity) {
+    return inventoryController.ReserveStockForItems(
+        toInventoryItems(productId, quantity)
+    );
+}
+
+async function expireReservationIfNeeded(reservation) {
+    if (!reservation || reservation.status !== 'PENDING') {
+        return reservation;
+    }
+
+    const now = new Date();
+    if (!reservation.reservedUntil || reservation.reservedUntil > now) {
+        return reservation;
+    }
+
+    const releaseResult = await releaseReservationInventory(reservation);
+    if (!releaseResult.success) {
+        return reservation;
+    }
+
+    reservation.status = 'EXPIRED';
+    await reservation.save();
+    return reservation;
 }
 
 module.exports = {
@@ -41,6 +85,19 @@ module.exports = {
             return { success: false, errorCode: 'INVALID_RESERVED_UNTIL' };
         }
 
+        if (expiry <= new Date()) {
+            return { success: false, errorCode: 'INVALID_RESERVED_UNTIL' };
+        }
+
+        const reserveResult = await reserveReservationInventory(productId, finalQuantity);
+        if (!reserveResult.success) {
+            return {
+                success: false,
+                errorCode: reserveResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                message: reserveResult.message || 'Unable to reserve inventory'
+            };
+        }
+
         let reservation = new reservationModel({
             user: userId,
             product: productId,
@@ -49,7 +106,16 @@ module.exports = {
             note: note || ''
         });
 
-        await reservation.save();
+        try {
+            await reservation.save();
+        } catch (error) {
+            await inventoryController.ReleaseReservedStockForItems(toInventoryItems(productId, finalQuantity));
+            return {
+                success: false,
+                errorCode: 'CREATE_RESERVATION_ERROR',
+                message: error.message
+            };
+        }
         await reservation.populate('product');
 
         return {
@@ -69,6 +135,10 @@ module.exports = {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limitNumber);
+
+        for (let index = 0; index < reservations.length; index += 1) {
+            reservations[index] = await expireReservationIfNeeded(reservations[index]);
+        }
 
         let total = await reservationModel.countDocuments({ user: userId, isDeleted: false });
 
@@ -93,6 +163,8 @@ module.exports = {
             return { success: false, errorCode: 'RESERVATION_NOT_FOUND' };
         }
 
+        reservation = await expireReservationIfNeeded(reservation);
+
         return {
             success: true,
             data: sanitizeReservation(reservation)
@@ -108,9 +180,15 @@ module.exports = {
             return { success: false, errorCode: 'RESERVATION_NOT_FOUND' };
         }
 
+        reservation = await expireReservationIfNeeded(reservation);
+
         if (reservation.status !== 'PENDING') {
             return { success: false, errorCode: 'RESERVATION_NOT_EDITABLE' };
         }
+
+        const previousQuantity = Number(reservation.quantity || 0);
+        const previousReservedUntil = reservation.reservedUntil;
+        const previousNote = reservation.note;
 
         if (updates.quantity !== undefined) {
             const newQuantity = Number(updates.quantity);
@@ -125,6 +203,9 @@ module.exports = {
             if (Number.isNaN(newExpiry.getTime())) {
                 return { success: false, errorCode: 'INVALID_RESERVED_UNTIL' };
             }
+            if (newExpiry <= new Date()) {
+                return { success: false, errorCode: 'INVALID_RESERVED_UNTIL' };
+            }
             reservation.reservedUntil = newExpiry;
         }
 
@@ -132,7 +213,57 @@ module.exports = {
             reservation.note = updates.note || '';
         }
 
-        await reservation.save();
+        const nextQuantity = Number(reservation.quantity || 0);
+        if (nextQuantity !== previousQuantity) {
+            const releaseResult = await inventoryController.ReleaseReservedStockForItems(
+                toInventoryItems(reservation.product, previousQuantity)
+            );
+
+            if (!releaseResult.success) {
+                reservation.quantity = previousQuantity;
+                reservation.reservedUntil = previousReservedUntil;
+                reservation.note = previousNote;
+                return {
+                    success: false,
+                    errorCode: releaseResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                    message: releaseResult.message || 'Unable to release previous reserved stock'
+                };
+            }
+
+            const reserveResult = await inventoryController.ReserveStockForItems(
+                toInventoryItems(reservation.product, nextQuantity)
+            );
+
+            if (!reserveResult.success) {
+                await inventoryController.ReserveStockForItems(toInventoryItems(reservation.product, previousQuantity));
+                reservation.quantity = previousQuantity;
+                reservation.reservedUntil = previousReservedUntil;
+                reservation.note = previousNote;
+                return {
+                    success: false,
+                    errorCode: reserveResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                    message: reserveResult.message || 'Unable to reserve inventory for updated reservation'
+                };
+            }
+        }
+
+        try {
+            await reservation.save();
+        } catch (error) {
+            if (nextQuantity !== previousQuantity) {
+                await inventoryController.ReleaseReservedStockForItems(toInventoryItems(reservation.product, nextQuantity));
+                await inventoryController.ReserveStockForItems(toInventoryItems(reservation.product, previousQuantity));
+            }
+
+            reservation.quantity = previousQuantity;
+            reservation.reservedUntil = previousReservedUntil;
+            reservation.note = previousNote;
+            return {
+                success: false,
+                errorCode: 'UPDATE_RESERVATION_ERROR',
+                message: error.message
+            };
+        }
 
         return {
             success: true,
@@ -147,7 +278,19 @@ module.exports = {
             return { success: false, errorCode: 'RESERVATION_NOT_FOUND' };
         }
 
-        reservation.status = 'CANCELLED';
+        reservation = await expireReservationIfNeeded(reservation);
+        if (reservation.status === 'PENDING') {
+            const releaseResult = await releaseReservationInventory(reservation);
+            if (!releaseResult.success) {
+                return {
+                    success: false,
+                    errorCode: releaseResult.errorCode || 'UPDATE_INVENTORY_ERROR',
+                    message: releaseResult.message || 'Unable to release reserved inventory'
+                };
+            }
+        }
+
+        reservation.status = reservation.status === 'EXPIRED' ? 'EXPIRED' : 'CANCELLED';
         await reservation.save();
 
         return {
