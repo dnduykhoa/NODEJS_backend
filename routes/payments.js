@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let paymentController = require('../controllers/payments');
-const { checkLogin, checkRole } = require('../utils/jwtHandler');
+const { checkLogin, checkRole } = require('../utils/authHandler');
 
 router.use(checkLogin);
 

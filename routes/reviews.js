@@ -3,7 +3,7 @@ var router = express.Router();
 let reviewController = require('../controllers/reviews');
 let reviewModel = require('../schemas/reviews');
 let orderModel = require('../schemas/orders');
-let { checkLogin, checkRole } = require('../utils/jwtHandler');
+let { checkLogin, checkRole } = require('../utils/authHandler');
 
 // Lấy tất cả reviews của 1 sản phẩm
 router.get('/product/:productId', async function (req, res, next) {

@@ -2,7 +2,7 @@ var express = require('express');
 var router = express.Router();
 let productController = require('../controllers/products');
 const upload = require('../utils/uploadHandler');
-const { checkLogin, checkRole } = require('../utils/jwtHandler');
+const { checkLogin, checkRole } = require('../utils/authHandler');
 
 function parseImagesValue(value) {
 	if (Array.isArray(value)) {

@@ -1,7 +1,7 @@
 var express = require('express');
 var router = express.Router();
 let cartController = require('../controllers/carts');
-const { checkLogin } = require('../utils/jwtHandler');
+const { checkLogin } = require('../utils/authHandler');
 
 router.use(checkLogin);
 
