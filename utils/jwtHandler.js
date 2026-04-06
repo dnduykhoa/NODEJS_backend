@@ -1,7 +1,8 @@
-const jwt = require('jsonwebtoken');
-const userModel = require('../schemas/users');
-const config = require('./config');
+let jwt = require('jsonwebtoken');
+let userModel = require('../schemas/users');
+let config = require('./config');
 
+// Hàm lấy token từ header hoặc cookie
 function extractToken(req) {
     const authHeader = req.headers.authorization || '';
     if (authHeader.startsWith('Bearer ')) {
@@ -15,6 +16,7 @@ function extractToken(req) {
     return null;
 }
 
+// Kiểm tra đăng nhập
 async function checkLogin(req, res, next) {
     try {
         const token = extractToken(req);
@@ -50,8 +52,11 @@ async function checkLogin(req, res, next) {
     }
 }
 
+// Kiểm tra role
 function checkRole() {
-    const allowedRoles = Array.from(arguments);
+    // Lấy danh sách các quyền được phép
+    const allowedRoles = Array.from(arguments); 
+    // Chuyển tất cả tên quyền thành chữ HOA để so sánh cho chính xác
     const normalizedAllowedRoles = allowedRoles.map(function (role) {
         return String(role).toUpperCase();
     });
@@ -65,7 +70,9 @@ function checkRole() {
             });
         }
 
+        // Lấy tên role của user hiện tại, chuyển thành chữ HOA để so sánh
         const currentRoleName = req.user.role.name ? String(req.user.role.name).toUpperCase() : '';
+        // Kiểm tra xem quyền của người này có nằm trong danh sách được phép không
         if (!normalizedAllowedRoles.includes(currentRoleName)) {
             return res.status(403).json({
                 success: false,
